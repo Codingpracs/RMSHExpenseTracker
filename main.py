@@ -20,19 +20,44 @@ def save_db(database, path) -> None:
     with open(path, "w") as f:
         json.dump(database, f, indent = 2, ensure_ascii = True)
 
-def add(database,description,amount) -> None:
-    uniqueid = str(int(max("0", *database.keys())) + 1)
-    dt = datetime.now()
-    today = dt.date()
+def add(database,description,amount, category = None) -> None:
 
-    database[uniqueid] = {
-        "ID": uniqueid,
-        "Date": today.isoformat(), # converts date to string, without it json cannot store the date
-        "Description": description,
-        "Amount": amount
-    }
+    # while True: 
+    #     print("""Please Choose a category:
+    #         1. Food 
+    #         2. Transport
+    #         3. Self Care
+    #         4. Travel
+    #         5. ETC
+    #         """)
+        
+    #     choice = input("Enter a number corresponding to the category: ")
 
-    viewlist({uniqueid: database[uniqueid]})
+    #     categories = {
+    #         "1" : "Food", 
+    #         "2" : "Transport",
+    #         "3" : "Self Care",
+    #         "4" : "Travel",
+    #         "5" : "ETC"
+    #     }
+
+    #     if choice in categories:
+    #         category = categories[choice]
+    #         break
+    #     else:
+    #         print("Please choose a valid choice")
+
+        dt = datetime.now()
+        uniqueid = str(int(max("0", *database.keys())) + 1)
+        today = dt.date()
+        database[uniqueid] = {
+            "ID": uniqueid,
+            "Date": today.isoformat(), # converts date to string, without it json cannot store the date
+            "Description": description,
+            "Category": category,
+            "Amount": amount
+        }
+        viewlist({uniqueid: database[uniqueid]})
 
 def delete(database, id) -> None:
     viewlist({id:database[id]})
@@ -49,7 +74,6 @@ def delete(database, id) -> None:
         else: 
             print("Invalid Choice. Please choose an option.")
     
-
 
 # args means can determine what the argument represents depending on the input count/ type
 def update(database,id,*args):
@@ -73,24 +97,17 @@ def update(database,id,*args):
         print(f"Description of expense {id} has changed to {description}")
     if amount is None and description is None:
         print(f"Nothing has changed for expense {id}")
-    
     viewlist({id: database[id]})
 
 def viewsummary(database, month = None):
-    amt_log = []
-    total = sum(int(data['Amount']) for data in database.values())
-    # for id, data in database.items():
-    #     amt_log.append(int(data['amount']))
-    # total = sum(amt_log)
+    # total = sum(float(data['Amount']) for data in database.values())
+    total = 0
+    for data in database.values():
+        entry_date = datetime.strptime(data['Date'], "%Y-%m-%d").date()
+        if month is None or entry_date.month == int(month):
+            total += float(data['Amount'])
     print(f"Total expenses: {total}")
 
-    # if month is not None:
-    #     database['date'] =
-
-
-# def listexpense(database, default = all) -> None:
-#     viewlist({id: database[id]})
-    
 
 def viewlist(database) -> None:
     print(f"{'ID':<5} {'Date':<15} {'Description':<40} {'Amount':<10}")
@@ -98,7 +115,7 @@ def viewlist(database) -> None:
     for id, properties in database.items():
         print(f"{id:<5} {properties['Date']:<15} {properties['Description']:<40} {properties['Amount']:<10}")
         # can import textwrap to wrap long ass texts
-        
+
 def main() -> None:
     parser = ArgumentParser(description = "expense tracker")
     subparsers = parser.add_subparsers(dest = 'command', required = True)
@@ -125,6 +142,12 @@ def main() -> None:
     summary_parser = subparsers.add_parser("summary")
     summary_parser.add_argument("--month", required = False, help = " Filtered by Month ")
     summary_parser.set_defaults(func = viewsummary)
+
+    date_changer = subparsers.add_parser("change")
+    date_changer.add_argument("id")
+    date_changer.add_argument("date",type = lambda s: datetime.strptime(s, "%Y-%m-%d").date())
+    date_changer.set_defaults(func = lambda db, id, date: (db[id].update({"Date": str(date)}),
+                              print(f"Date of {id} changed to {date}")))
 
     reset_paser = subparsers.add_parser("reset")
     # clear removes all elements from a dictionary
